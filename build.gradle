@@ -23,7 +23,8 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 repositories {
-    // Fabric repositories are declared in settings.gradle.
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
 }
 
 dependencies {
