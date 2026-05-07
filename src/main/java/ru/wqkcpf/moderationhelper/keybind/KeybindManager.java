@@ -14,22 +14,25 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 public final class KeybindManager {
-    private final KeyBinding openStatsKey;
-    private final KeyBinding stopObsKey;
+    private KeyBinding openStatsKey;
+    private KeyBinding stopObsKey;
 
     public KeybindManager() {
+    }
+
+    public void register() {
         KeyBinding.Category category = KeyBinding.Category.create(
                 Identifier.of(ModerationHelperClient.MOD_ID, "main")
         );
 
-        this.openStatsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        openStatsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.moderation_helper_gui.open_stats",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_H,
                 category
         ));
 
-        this.stopObsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        stopObsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.moderation_helper_gui.stop_obs",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_G,
@@ -38,38 +41,42 @@ public final class KeybindManager {
     }
 
     public void tick(MinecraftClient client) {
-        while (openStatsKey.wasPressed()) {
-            ModerationHelperClient.openStatsScreen();
+        if (openStatsKey != null) {
+            while (openStatsKey.wasPressed()) {
+                ModerationHelperClient.openStatsScreen();
+            }
         }
 
-        while (stopObsKey.wasPressed()) {
-            // Важно: если открыт чат, клавиша G НЕ должна останавливать OBS.
-            if (client.currentScreen instanceof ChatScreen) {
-                continue;
-            }
+        if (stopObsKey != null) {
+            while (stopObsKey.wasPressed()) {
+                // Если открыт чат, G НЕ должен останавливать OBS.
+                if (client.currentScreen instanceof ChatScreen) {
+                    continue;
+                }
 
-            stopObsSafely(client);
+                stopObsSafely(client);
+            }
         }
     }
 
     private void stopObsSafely(MinecraftClient client) {
         try {
             /*
-             * Сначала пробуем вызвать метод ModerationHelperClient.stopObsRecording(String),
-             * если он есть в твоей версии клиента.
+             * Вариант 1:
+             * если в ModerationHelperClient есть метод stopObsRecording(String),
+             * вызываем его.
              */
             try {
                 Method method = ModerationHelperClient.class.getMethod("stopObsRecording", String.class);
                 method.invoke(null, "Запись OBS остановлена клавишей G.");
                 return;
             } catch (NoSuchMethodException ignored) {
-                // Если метода нет, ниже пробуем остановить OBS напрямую через поле OBS.
+                // Если такого метода нет, идём ниже.
             }
 
             /*
-             * Запасной вариант:
-             * ищем public static поле OBS и вызываем у него stopRecording().
-             * Так код не ломается, даже если структура клиента чуть отличается.
+             * Вариант 2:
+             * ищем public static поле OBS и вызываем stopRecording().
              */
             Field obsField = ModerationHelperClient.class.getField("OBS");
             Object obs = obsField.get(null);
